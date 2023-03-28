@@ -3,12 +3,13 @@ import org.apache.iotdb.session.{Session, SessionDataSet}
 import org.apache.iotdb.tsfile.file.metadata.enums.{CompressionType, TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
 import utils.InsertData
-import utils.Utils.getIoTDBSession
+import utils.Utils.{getIoTDBSession, getLeafNode}
 
 import java.io.{File, FileOutputStream}
 import java.nio.ByteBuffer
 import java.util.Properties
 import scala.collection.mutable.ArrayBuffer
+import scala.language.postfixOps
 
 object WriteTestData {
 
@@ -19,57 +20,85 @@ object WriteTestData {
     val logFile = new File(path)
     val fileOutputStream = new FileOutputStream(logFile, true)
     val channel = fileOutputStream.getChannel
+    val splitLine = (s: String) => "=" * 50 + s + "=" * 50
+    val model = "root.test3.tank.tank500"
 
     val vinNum = 1000
     val sigNum = 100
     val rowSize = 10000
-    val outOrderRate = 0.01
-    val dataOverView =
-      s"""数据总览：
-         | vin数量：$vinNum
-         | 单vin信号量：$sigNum
-         | 单信号数据量：$rowSize
-         | 乱序率：$outOrderRate
-         | 总计数据点：${vinNum * sigNum * rowSize}
-         |""".stripMargin
-
-    println(dataOverView)
-    channel.write(ByteBuffer.wrap(dataOverView.getBytes))
 
     val paths = new ArrayBuffer[String]()
     val sigs = new ArrayBuffer[MeasurementSchema]()
-    (0 until vinNum).foreach(num => paths.append(s"root.test3.tank.tank500.LL${num}"))
+    (0 until vinNum).foreach(num => paths.append(s"$model.LL${num}"))
     (0 until sigNum).foreach(num => sigs.append(new MeasurementSchema(s"s$num", TSDataType.DOUBLE)))
-
 
     val sessionPool = getIoTDBSession.build()
 
-    //    sessionPool.createDatabase("root.test3") //创建数据库
+    sessionPool.createDatabase("root.test3") //创建数据库
 
-    // 创建时间序列（按设备创建）
-    //    paths.foreach(path => {
-    //      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
-    //    })
+    //     创建时间序列（按设备创建）
+    paths.foreach(path => {
+      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
+    })
 
-    println("开始生成数据......")
-    var start = System.nanoTime()
+    def saveToIoT(outOrderRate: Seq[Double]) = {
+      var i = 1
+      val cast = (x: Long) => ((System.nanoTime() - x).toFloat / 1000000000).formatted("%.3f").toDouble
+      val casts = new ArrayBuffer[Double]()
+      var start: Long = 0L
+      var initTime = 1679932800000L
 
-    val tablets = InsertData.createTablets(paths, sigs, rowSize, disOrderRate = outOrderRate) // 创建测试数据集
+      outOrderRate foreach (rate => {
+        println(s"开始生成第 $i 轮数据......")
+        start = System.nanoTime()
+        // 创建测试数据集
+        var tablets = InsertData.createTablets(paths, sigs, rowSize, initTime = initTime, outOrderRate = rate)
+        val createCast_log = s"生成数据耗时：${cast(start)}s\n"
+        println(createCast_log)
+        println(s"开始写入第 $i 轮数据......乱序率：$rate")
+        start = System.nanoTime()
+        tablets.foreach(sessionPool.insertTablet) //写入数据
+        val writeCast_log = s"第 $i 轮数据，乱序率 $rate 写入耗时：${cast(start)}s\n"
+        casts.append(cast(start))
+        println(writeCast_log)
+        channel.write(ByteBuffer.wrap(writeCast_log.getBytes))
 
-    val createCast = System.nanoTime() - start
-    val createCast_log = s"生成数据耗时：${(createCast.toFloat / 1000000000).formatted("%.3f")}s\n"
-    channel.write(ByteBuffer.wrap(createCast_log.getBytes))
-    println(createCast_log)
+        i = i + 1
+        initTime = sessionPool.executeQueryStatement("select last s35 from root.test3.tank.tank500.LL338").next.getTimestamp
+      })
 
-    println("开始写入数据......")
-    start = System.nanoTime()
+      val avgCast = casts.sum / casts.size
+      val varCast = casts.reduce(avgCast - _ + avgCast - _) / casts.size
+      val total_log = s"总计${outOrderRate.size}轮，总共耗时：${casts.sum.formatted("%.3f")}s，平均每轮耗时：${avgCast.formatted("%.3f")}s，写入波动：${varCast.formatted("%.3f")}s\n"
+      channel.write(ByteBuffer.wrap((splitLine("写入摘要") + "\n").getBytes))
+      channel.write(ByteBuffer.wrap(total_log.getBytes))
+    }
 
-    tablets.foreach(sessionPool.insertTablet) //写入数据
+    val rates = Seq(0.01, 0.1, 0.4, 0.9)
+    saveToIoT(rates)
+    channel.write(ByteBuffer.wrap("\n".getBytes))
+    channel.write(ByteBuffer.wrap(splitLine("数据总览").getBytes))
 
-    val writeCast = System.nanoTime() - start
-    val writeCast_log = s"写入数据耗时：${(writeCast.toFloat / 1000000000).formatted("%.3f")}s\n"
-    channel.write(ByteBuffer.wrap(writeCast_log.getBytes))
-    println(writeCast_log)
+    val totalVin = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.** LEVEL=4")).head.toInt
+    val totalSig = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.LL56.** LEVEL=5")).head.toInt
+    val totalData = totalSig * totalVin * rowSize * rates.size
+    channel.write(ByteBuffer.wrap(s"总的车辆数：$totalVin".getBytes))
+    channel.write(ByteBuffer.wrap(s"单车辆信号数：$totalSig".getBytes))
+    channel.write(ByteBuffer.wrap(s"总的数据量：$totalData".getBytes))
+    channel.write(ByteBuffer.wrap("\n".getBytes))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

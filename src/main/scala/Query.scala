@@ -63,7 +63,7 @@ object Query {
     //    paths.add(dataBases)
 
     val sessionPool: SessionPool = getIoTDBSession.build()
-    //    looper(sessionPool,100,sql1,channel)
+    looper(sessionPool, 100, sql1, channel)
     looper(sessionPool, 100, sql3, channel)
 
 

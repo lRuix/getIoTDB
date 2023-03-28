@@ -48,14 +48,14 @@ object InsertData {
    * @param range        If the two adjacent times are disordered, the interval between them is range
    * @return a set of Tablet
    */
-  def createTablets(paths: Seq[String], sensors: Seq[MeasurementSchema], rowSize: Int, initTime: Long = 1640966400000L, step: Int = 1000, disOrderRate: Double = 0.01, range: Int = 100): Seq[Tablet] = {
+  def createTablets(paths: Seq[String], sensors: Seq[MeasurementSchema], rowSize: Int, initTime: Long = 1640966400000L, step: Int = 1000, outOrderRate: Double = 0.01, range: Int = 100): Seq[Tablet] = {
     //    val deviceId = "root.test.tank.tank500.LL1"
     //    val initTime = 1640966400000L //20220101 00:00:00
 
     val schemas = new util.ArrayList[MeasurementSchema]
 
     val tablets = new ArrayBuffer[Tablet]()
-    val timestamps = genTimestamps(initTime, rowSize, step, disOrderRate, range)
+    val timestamps = genTimestamps(initTime, rowSize, step, outOrderRate, range)
     sensors.foreach(schemas.add)
 
     paths.foreach(device => {
