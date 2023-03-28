@@ -2,6 +2,7 @@ import org.apache.iotdb.session.pool.SessionPool
 import org.apache.iotdb.session.{Session, SessionDataSet}
 import org.apache.iotdb.tsfile.file.metadata.enums.{CompressionType, TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
+import utils.InsertData
 import utils.Utils.getIoTDBSession
 
 import java.io.{File, FileOutputStream}
@@ -10,12 +11,6 @@ import java.util.Properties
 import scala.collection.mutable.ArrayBuffer
 
 object WriteTestData {
-
-
-
-
-
-
 
   def main(args: Array[String]): Unit = {
 
@@ -27,6 +22,20 @@ object WriteTestData {
 
     val vinNum = 1000
     val sigNum = 100
+    val rowSize = 10000
+    val outOrderRate = 0.01
+    val dataOverView =
+      s"""数据总览：
+         | vin数量：$vinNum
+         | 单vin信号量：$sigNum
+         | 单信号数据量：$rowSize
+         | 乱序率：$outOrderRate
+         | 总计数据点：${vinNum * sigNum * rowSize}
+         |    """.stripMargin
+
+    println(dataOverView)
+    channel.write(ByteBuffer.wrap(dataOverView.getBytes))
+
     val paths = new ArrayBuffer[String]()
     val sigs = new ArrayBuffer[MeasurementSchema]()
     (0 until vinNum).foreach(num => paths.append(s"root.test3.tank.tank500.LL${num}"))
@@ -35,22 +44,25 @@ object WriteTestData {
 
     val sessionPool = getIoTDBSession.build()
 
-    sessionPool.createDatabase("root.test3") //创建数据库
+    //    sessionPool.createDatabase("root.test3") //创建数据库
 
     // 创建时间序列（按设备创建）
-    paths.foreach(path => {
-      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
-    })
+    //    paths.foreach(path => {
+    //      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
+    //    })
 
+    println("开始生成数据......")
     var start = System.nanoTime()
 
-    val tablets = InsertData.createTablets(paths, sigs, 10000) // 创建测试数据集
+    val tablets = InsertData.createTablets(paths, sigs, rowSize, disOrderRate = outOrderRate) // 创建测试数据集
 
     val createCast = System.nanoTime() - start
     val createCast_log = s"生成数据耗时：${(createCast.toFloat / 1000000000).formatted("%.3f")}s\n"
+    println(dataOverView)
     channel.write(ByteBuffer.wrap(createCast_log.getBytes))
     println(createCast_log)
 
+    println("开始写入数据......")
     start = System.nanoTime()
 
     tablets.foreach(sessionPool.insertTablet) //写入数据

@@ -1,3 +1,5 @@
+package utils
+
 import org.apache.iotdb.tsfile.write.record.Tablet
 
 import scala.collection.mutable
@@ -6,6 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 object InsertData {
 
   import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
+
   import java.util
 
   /**
