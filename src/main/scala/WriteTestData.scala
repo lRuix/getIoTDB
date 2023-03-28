@@ -31,7 +31,7 @@ object WriteTestData {
          | 单信号数据量：$rowSize
          | 乱序率：$outOrderRate
          | 总计数据点：${vinNum * sigNum * rowSize}
-         |    """.stripMargin
+         |""".stripMargin
 
     println(dataOverView)
     channel.write(ByteBuffer.wrap(dataOverView.getBytes))
@@ -58,7 +58,6 @@ object WriteTestData {
 
     val createCast = System.nanoTime() - start
     val createCast_log = s"生成数据耗时：${(createCast.toFloat / 1000000000).formatted("%.3f")}s\n"
-    println(dataOverView)
     channel.write(ByteBuffer.wrap(createCast_log.getBytes))
     println(createCast_log)
 
