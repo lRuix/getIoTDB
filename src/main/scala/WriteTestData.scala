@@ -1,47 +1,21 @@
 import org.apache.iotdb.session.pool.SessionPool
-import org.apache.iotdb.session.pool.{SessionDataSetWrapper, SessionPool}
 import org.apache.iotdb.session.{Session, SessionDataSet}
 import org.apache.iotdb.tsfile.file.metadata.enums.{CompressionType, TSDataType, TSEncoding}
-import org.apache.iotdb.tsfile.write.record.Tablet
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
-import sun.audio.AudioDevice
+import utils.Utils.getIoTDBSession
 
 import java.io.{File, FileOutputStream}
 import java.nio.ByteBuffer
-import java.util
 import java.util.Properties
 import scala.collection.mutable.ArrayBuffer
 
-object selectIoTDB {
+object WriteTestData {
 
-  def getProperties(file: String, cols: String*): Array[String] = {
 
-    val path = this.getClass.getClassLoader.getResource(file)
 
-    val properties = new Properties()
-    properties.load(path.openStream())
-    val colsIter = cols.toIterator
-    val props = new ArrayBuffer[String]()
-    while (colsIter.hasNext) {
-      props.append(properties.getProperty(colsIter.next()))
-    }
-    props.toArray
-  }
 
-  def getIoTDBSession: SessionPool.Builder = {
-    val props = getProperties("application.properties", "host", "port", "user", "pwd")
-    new SessionPool.Builder().host(props(0)).port(props(1).toInt).user(props(2)).password(props(3))
-  }
 
-  def getLeafNode(se: SessionDataSet): Seq[String] = {
-    val tmp = new ArrayBuffer[String]()
-    while (
-      se.hasNext
-    ) {
-      tmp.append(se.next.getFields.get(0).toString)
-    }
-    tmp
-  }
+
 
   def main(args: Array[String]): Unit = {
 
@@ -61,18 +35,19 @@ object selectIoTDB {
 
     val sessionPool = getIoTDBSession.build()
 
-    sessionPool.createDatabase("root.test3")
+    sessionPool.createDatabase("root.test3") //创建数据库
 
+    // 创建时间序列（按设备创建）
     paths.foreach(path => {
       sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
     })
 
     var start = System.nanoTime()
 
-    val tablets = insertData.genTablet(paths, sigs, 10000) // 创建数据集
+    val tablets = InsertData.createTablets(paths, sigs, 10000) // 创建测试数据集
 
     val createCast = System.nanoTime() - start
-    val createCast_log = s"create data casts ${(createCast.toFloat / 1000000000).formatted("%.3f")}s"
+    val createCast_log = s"生成数据耗时：${(createCast.toFloat / 1000000000).formatted("%.3f")}s\n"
     channel.write(ByteBuffer.wrap(createCast_log.getBytes))
     println(createCast_log)
 
@@ -81,12 +56,10 @@ object selectIoTDB {
     tablets.foreach(sessionPool.insertTablet) //写入数据
 
     val writeCast = System.nanoTime() - start
-    val writeCast_log = s"write data casts ${(writeCast.toFloat / 1000000000).formatted("%.3f")}s"
+    val writeCast_log = s"写入数据耗时：${(writeCast.toFloat / 1000000000).formatted("%.3f")}s\n"
     channel.write(ByteBuffer.wrap(writeCast_log.getBytes))
     println(writeCast_log)
 
-    val a:Int = 3
-    //    tablets.foreach(sessionPool.insertTablet(_))
 
 
     //    session.executeQueryStatement("delete from root.lrx2.tanke.tank500.LL14534149684.BMS_vol")
@@ -195,10 +168,7 @@ object selectIoTDB {
     //    println(list.size)
 
     sessionPool.close()
-    //查询最后一条数据
-    //    val paths = new util.ArrayList[String]()
-    //    paths.add("root.lrx2.哈弗.哈弗酷狗.A08.CC6450BZ00A.fuel.`2021`.black.LGWEF5A53NK126240.veh_spd")
-    //    val dataSet1 = session.executeLastDataQuery(paths)
+
   }
 
 
