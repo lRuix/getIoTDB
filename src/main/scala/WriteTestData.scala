@@ -20,7 +20,7 @@ object WriteTestData {
     val logFile = new File(path)
     val fileOutputStream = new FileOutputStream(logFile, true)
     val channel = fileOutputStream.getChannel
-    val splitLine = (s: String) => "=" * 50 + s + "=" * 50
+    val splitLine = (s: String) => "=" * 40 + s + "=" * 40
     val model = "root.test3.tank.tank500"
 
     val vinNum = 1000
@@ -49,6 +49,7 @@ object WriteTestData {
       var initTime = 1679932800000L
 
       outOrderRate foreach (rate => {
+
         println(s"开始生成第 $i 轮数据......")
         start = System.nanoTime()
         // 创建测试数据集
@@ -71,20 +72,27 @@ object WriteTestData {
       val varCast = casts.reduce(avgCast - _ + avgCast - _) / casts.size
       val total_log = s"总计${outOrderRate.size}轮，总共耗时：${casts.sum.formatted("%.3f")}s，平均每轮耗时：${avgCast.formatted("%.3f")}s，写入波动：${varCast.formatted("%.3f")}s\n"
       channel.write(ByteBuffer.wrap((splitLine("写入摘要") + "\n").getBytes))
+      channel.write(ByteBuffer.wrap("\n".getBytes))
       channel.write(ByteBuffer.wrap(total_log.getBytes))
     }
+
+    channel.write(ByteBuffer.wrap((splitLine("======")+"\n").getBytes))
+    channel.write(ByteBuffer.wrap((" " * 40 + "写入报告" + "\n").getBytes))
+    channel.write(ByteBuffer.wrap((splitLine("======")+ "\n").getBytes))
 
     val rates = Seq(0.01, 0.1, 0.4, 0.9)
     saveToIoT(rates)
     channel.write(ByteBuffer.wrap("\n".getBytes))
     channel.write(ByteBuffer.wrap(splitLine("数据总览").getBytes))
+    channel.write(ByteBuffer.wrap("\n".getBytes))
 
     val totalVin = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.** LEVEL=4")).head.toInt
     val totalSig = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.LL56.** LEVEL=5")).head.toInt
-    val totalData = totalSig * totalVin * rowSize * rates.size
-    channel.write(ByteBuffer.wrap(s"总的车辆数：$totalVin".getBytes))
-    channel.write(ByteBuffer.wrap(s"单车辆信号数：$totalSig".getBytes))
-    channel.write(ByteBuffer.wrap(s"总的数据量：$totalData".getBytes))
+    val totalData:Long = totalSig * totalVin * rowSize * rates.size
+    channel.write(ByteBuffer.wrap("\n".getBytes))
+    channel.write(ByteBuffer.wrap(s"总的车辆数：$totalVin\n".getBytes))
+    channel.write(ByteBuffer.wrap(s"单车辆信号数：$totalSig\n".getBytes))
+    channel.write(ByteBuffer.wrap(s"总的数据量：$totalData\n".getBytes))
     channel.write(ByteBuffer.wrap("\n".getBytes))
 
 
