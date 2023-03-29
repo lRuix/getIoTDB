@@ -53,18 +53,22 @@ object Query {
     val channel = fileOutputStream.getChannel
 
     val dataBases = "root.test3"
-    val sql1 = s"select last * from $dataBases.**"
-    val sql2 = s"select last s56 from $dataBases.**"
-    val sql3 = s"select last * from $dataBases.** where time < 2022-01-01 02:00:00"
-    val sql4 = s"select last s56 from $dataBases.** where time < 2022-01-01 02:00:00"
+    val sql1 = s"select last * from $dataBases.**" //全局最新数据点查询
+    val sql2 = s"select last s56 from $dataBases.**" //所有设备s56传感器最新数据点查询
+    val sql3 = s"select last * from $dataBases.** where time < 2023-03-28 10:00:00" //特定时间全局最新数据点查询
+    val sql4 = s"select last s56 from $dataBases.** where time < 2023-03-28 10:00:00" //特定时间所有设备s56传感器最新数据点查询
+    val sql5 = s"select s56 from $dataBases.**.LL70 where s56 between -1 and 1" //过滤条件查询
+    val sql6 = s"select count(s70), max_value(s72) from $dataBases.**.LL70 group by ([2023-03-28 00:00:00, 2023-03-28 10:00:00), 30m, 28m)" //滑动窗口
+    val sql7 = s"select count(s23) from root.** group by level = 1" //普通聚合
+    val sql8 = s"select M4(s1,'timeInterval'='25') from $dataBases.**.LL70" //数据降采样
+    val sql9 = s"select acf(s56) from $dataBases.**.LL338" //序列自相关计算
+    val sql10 = s"select integral(s1) from $dataBases.**.LL338" //数值积分计算
+    val sql11 = s"select minmax(s78) from $dataBases.**.LL338" //min-max标准化计算
+    val sqls = Seq(sql1,sql2,sql3,sql4,sql5,sql6,sql7,sql8,sql9,sql10,sql11)
 
-    //查询最后一条数据
-    //    val paths = new util.ArrayList[String]()
-    //    paths.add(dataBases)
+    val sessionPool: SessionPool = getIoTDBSession("application.properties",5).build()
 
-    val sessionPool: SessionPool = getIoTDBSession.build()
-    looper(sessionPool, 100, sql1, channel)
-    looper(sessionPool, 100, sql3, channel)
+    sqls foreach (sql=>looper(sessionPool, 100, sql, channel))
 
 
   }
