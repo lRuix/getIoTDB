@@ -16,6 +16,7 @@ object WriteTestData {
   def main(args: Array[String]): Unit = {
 
     // 结果输出到文件
+    val prop = "application.properties"
     val path = "iotdb_test.log"
     val logFile = new File(path)
     val fileOutputStream = new FileOutputStream(logFile, true)
@@ -32,14 +33,14 @@ object WriteTestData {
     (0 until vinNum).foreach(num => paths.append(s"$model.LL${num}"))
     (0 until sigNum).foreach(num => sigs.append(new MeasurementSchema(s"s$num", TSDataType.DOUBLE)))
 
-    val sessionPool = getIoTDBSession.build()
-
-    sessionPool.createDatabase("root.test3") //创建数据库
-
-    //     创建时间序列（按设备创建）
-    paths.foreach(path => {
-      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
-    })
+    val sessionPool = getIoTDBSession(prop,5).build()
+//
+//    sessionPool.createDatabase("root.test3") //创建数据库
+//
+//    //     创建时间序列（按设备创建）
+//    paths.foreach(path => {
+//      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
+//    })
 
     def saveToIoT(outOrderRate: Seq[Double]) = {
       var i = 1
@@ -53,7 +54,7 @@ object WriteTestData {
         println(s"开始生成第 $i 轮数据......")
         start = System.nanoTime()
         // 创建测试数据集
-        var tablets = InsertData.createTablets(paths, sigs, rowSize, initTime = initTime, outOrderRate = rate)
+        val tablets = InsertData.createTablets(paths, sigs, rowSize, initTime = initTime, outOrderRate = rate)
         val createCast_log = s"生成数据耗时：${cast(start)}s\n"
         println(createCast_log)
         println(s"开始写入第 $i 轮数据......乱序率：$rate")
@@ -88,7 +89,7 @@ object WriteTestData {
 
     val totalVin = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.** LEVEL=4")).head.toInt
     val totalSig = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.LL56.** LEVEL=5")).head.toInt
-    val totalData:Long = totalSig * totalVin * rowSize * rates.size
+    val totalData:Long = totalSig.toLong * totalVin * rowSize * rates.size
     channel.write(ByteBuffer.wrap("\n".getBytes))
     channel.write(ByteBuffer.wrap(s"总的车辆数：$totalVin\n".getBytes))
     channel.write(ByteBuffer.wrap(s"单车辆信号数：$totalSig\n".getBytes))
@@ -216,6 +217,7 @@ object WriteTestData {
     //    println(list.size)
 
     sessionPool.close()
+
 
   }
 

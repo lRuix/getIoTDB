@@ -22,8 +22,8 @@ object Utils {
     props.toArray
   }
 
-  def getIoTDBSession: SessionPool.Builder = {
-    val props = getProperties("application.properties", "host", "port", "user", "pwd")
+  def getIoTDBSession(prop:String,threadNum:Int): SessionPool.Builder = {
+    val props = getProperties(prop, "host", "port", "user", "pwd")
     new SessionPool.Builder().host(props(0)).port(props(1).toInt).user(props(2)).password(props(3))
   }
 
