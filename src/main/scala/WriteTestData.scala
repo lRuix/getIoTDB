@@ -24,9 +24,9 @@ object WriteTestData {
     val splitLine = (s: String) => "=" * 40 + s + "=" * 40
     val model = "root.test3.tank.tank500"
 
-    val vinNum = 1000
-    val sigNum = 100
-    val rowSize = 10000
+    val vinNum = 10
+    val sigNum = 10
+    val rowSize = 1000000
 
     val paths = new ArrayBuffer[String]()
     val sigs = new ArrayBuffer[MeasurementSchema]()
@@ -34,13 +34,13 @@ object WriteTestData {
     (0 until sigNum).foreach(num => sigs.append(new MeasurementSchema(s"s$num", TSDataType.DOUBLE)))
 
     val sessionPool = getIoTDBSession(prop,5).build()
-//
-//    sessionPool.createDatabase("root.test3") //创建数据库
-//
-//    //     创建时间序列（按设备创建）
-//    paths.foreach(path => {
-//      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
-//    })
+
+    sessionPool.createDatabase("root.test3") //创建数据库
+
+    //     创建时间序列（按设备创建）
+    paths.foreach(path => {
+      sigs.foreach(sig => sessionPool.createTimeseries(path + "." + sig.getMeasurementId, TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY))
+    })
 
     def saveToIoT(outOrderRate: Seq[Double]) = {
       var i = 1
@@ -66,7 +66,7 @@ object WriteTestData {
         channel.write(ByteBuffer.wrap(writeCast_log.getBytes))
 
         i = i + 1
-        initTime = sessionPool.executeQueryStatement("select last s35 from root.test3.tank.tank500.LL338").next.getTimestamp
+        initTime = sessionPool.executeQueryStatement("select last s9 from root.test3.tank.tank500.LL9").next.getTimestamp
       })
 
       val avgCast = casts.sum / casts.size
