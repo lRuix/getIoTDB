@@ -30,7 +30,7 @@ object WriteTestData {
 
     val paths = new ArrayBuffer[String]()
     val sigs = new ArrayBuffer[MeasurementSchema]()
-    (0 until vinNum).foreach(num => paths.append(s"$model.LL${num}"))
+    (0 until vinNum).foreach(num=>paths.append(s"$model.LL${num}"))
     (0 until sigNum).foreach(num => sigs.append(new MeasurementSchema(s"s$num", TSDataType.DOUBLE)))
 
     val sessionPool = getIoTDBSession(prop,5).build()
@@ -88,7 +88,7 @@ object WriteTestData {
     channel.write(ByteBuffer.wrap("\n".getBytes))
 
     val totalVin = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.** LEVEL=4")).head.toInt
-    val totalSig = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.LL56.** LEVEL=5")).head.toInt
+    val totalSig = getLeafNode(sessionPool.executeQueryStatement(s"COUNT NODES $model.LL9.** LEVEL=5")).head.toInt
     val totalData:Long = totalSig.toLong * totalVin * rowSize * rates.size
     channel.write(ByteBuffer.wrap("\n".getBytes))
     channel.write(ByteBuffer.wrap(s"总的车辆数：$totalVin\n".getBytes))
