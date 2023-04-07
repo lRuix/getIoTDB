@@ -61,7 +61,7 @@ object Query {
     val sql5 = s"select s5 from $dataBases.**.LL7 where s5 between -1 and 1" //过滤条件查询
     val sql6 = s"select count(s7), max_value(s7) from $dataBases.**.LL7 group by ([2023-03-28 00:00:00, 2023-03-28 10:00:00), 30m, 28m)" //滑动窗口
     val sql7 = s"select count(s2) from root.** group by level = 1" //普通聚合
-    val sql8 = s"select M4(s1,'timeInterval'='25') from $dataBases.**.LL70" //数据降采样
+    val sql8 = s"select M4(s1,'timeInterval'='25') from $dataBases.**.LL7" //数据降采样
     val sql9 = s"select acf(s5) from $dataBases.**.LL3" //序列自相关计算
     val sql10 = s"select integral(s1) from $dataBases.**.LL3" //数值积分计算
     val sql11 = s"select minmax(s7) from $dataBases.**.LL3" //min-max标准化计算
@@ -69,7 +69,7 @@ object Query {
     val sql13 = s"select * from $dataBases.**.tank500.**" //查询一个车型的所有信号
     val sqls = Seq(sql1,sql2,sql3,sql4,sql5,sql6,sql7,sql8,sql9,sql10,sql11,sql12,sql13)
 
-    val sessionPool: SessionPool = getIoTDBSession("application.properties",5).build()
+    val sessionPool: SessionPool = getIoTDBSession("application.properties",1).build()
 
     sqls foreach (sql=>looper(sessionPool, 100, sql, channel))
 

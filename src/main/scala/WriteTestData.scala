@@ -33,7 +33,7 @@ object WriteTestData {
     (0 until vinNum).foreach(num=>paths.append(s"$model.LL${num}"))
     (0 until sigNum).foreach(num => sigs.append(new MeasurementSchema(s"s$num", TSDataType.DOUBLE)))
 
-    val sessionPool = getIoTDBSession(prop,5).build()
+    val sessionPool = getIoTDBSession(prop,3).build()
 
     sessionPool.createDatabase("root.test3") //创建数据库
 
